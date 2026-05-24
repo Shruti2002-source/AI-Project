@@ -65,9 +65,12 @@ export default function ExportPage() {
           break;
       }
 
-      downloadBlob(blob, filename);
+      downloadBlob(blob!, filename!);
       setExported(prev => [...prev, format]);
-    } catch (err) { console.error('Export failed:', err); }
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      alert(`Export failed: ${err?.message || 'Unknown error'}. Please try again.`);
+    }
     finally { setExporting(null); }
   };
 

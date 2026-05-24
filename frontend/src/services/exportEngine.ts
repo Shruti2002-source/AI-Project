@@ -596,26 +596,25 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
 
   for (const benchmark of data.benchmarks) {
     checkPageBreak(12);
+    const gap = benchmark.gapPercent ?? benchmark.gap ?? 0;
     const statusSymbol = benchmark.status === 'above' ? '[+]' : benchmark.status === 'below' ? '[-]' : '[=]';
 
     doc.setFontSize(9);
     doc.setFont(PDF_FONTS.body, 'normal');
 
     if (benchmark.status === 'above') {
-      doc.setTextColor(56, 161, 105);
+      doc.setTextColor(46, 125, 50);
     } else if (benchmark.status === 'below') {
-      doc.setTextColor(229, 62, 62);
+      doc.setTextColor(208, 74, 2);
     } else {
-      doc.setTextColor(113, 128, 150);
+      doc.setTextColor(125, 125, 125);
     }
 
     doc.text(statusSymbol, margin, yPos);
-    doc.setTextColor(26, 32, 44);
-    doc.text(
-      `${benchmark.kpiName}: ${benchmark.clientValue.toFixed(1)} vs ${benchmark.industryAverage.toFixed(1)} ${benchmark.unit} (Gap: ${benchmark.gapPercent > 0 ? '+' : ''}${benchmark.gapPercent.toFixed(1)}%) - ${benchmark.source}`,
-      margin + 8,
-      yPos
-    );
+    doc.setTextColor(45, 45, 45);
+    const benchText = `${benchmark.kpiName || 'N/A'}: ${(benchmark.clientValue ?? 0).toFixed(1)} vs ${(benchmark.industryAverage ?? 0).toFixed(1)} ${benchmark.unit || ''} (Gap: ${gap > 0 ? '+' : ''}${gap.toFixed(1)}%)`;
+    const truncated = benchText.length > 90 ? benchText.substring(0, 87) + '...' : benchText;
+    doc.text(truncated, margin + 8, yPos);
     yPos += 6;
   }
 
@@ -625,25 +624,26 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
 
   for (const insight of data.insights.slice(0, 8)) {
     checkPageBreak(20);
-    const severityTag = `[${insight.severity.toUpperCase()}]`;
+    const sev = (insight.severity || 'low').toUpperCase();
+    const severityTag = `[${sev}]`;
 
     doc.setFontSize(10);
     doc.setFont(PDF_FONTS.body, 'bold');
 
-    if (insight.severity === 'high') {
+    if (sev === 'HIGH') {
       doc.setTextColor(208, 74, 2);
-    } else if (insight.severity === 'medium') {
+    } else if (sev === 'MEDIUM') {
       doc.setTextColor(235, 140, 0);
     } else {
       doc.setTextColor(46, 125, 50);
     }
 
-    doc.text(`${severityTag} ${insight.title}`, margin, yPos);
+    doc.text(`${severityTag} ${insight.title || 'Insight'}`, margin, yPos);
     yPos += 5;
 
     doc.setFont(PDF_FONTS.body, 'normal');
     doc.setTextColor(45, 45, 45);
-    const descLines = doc.splitTextToSize(insight.description, contentWidth);
+    const descLines = doc.splitTextToSize(insight.description || '', contentWidth);
     doc.text(descLines.slice(0, 3), margin, yPos);
     yPos += Math.min(descLines.length, 3) * 4 + 6;
   }
@@ -687,7 +687,8 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
     doc.rect(0, 293, pageWidth, 0.5, 'F');
   }
 
-  return doc.output('blob');
+  const output = doc.output('arraybuffer');
+  return new Blob([output], { type: 'application/pdf' });
 }
 
 // ============================================================================
