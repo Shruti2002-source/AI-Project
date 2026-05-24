@@ -490,7 +490,8 @@ function createPwcClosingSlide(pptx: PptxGenJS, data: ExportData): void {
 // ============================================================================
 
 /**
- * Creates a consulting-style PDF report with KPI data, insights, and storyline.
+ * Creates a PwC-branded PDF report with KPI data, insights, and storyline.
+ * Uses jsPDF-compatible fonts (times for headings, helvetica for body).
  */
 export async function exportToPDF(data: ExportData): Promise<Blob> {
   const doc = new jsPDF({
@@ -499,32 +500,32 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
     format: 'a4'
   });
 
+  const PDF_FONTS = { title: 'times', body: 'helvetica' };
   const pageWidth = 210;
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
   let yPos = margin;
 
-  // Helper functions
   const addTitle = (text: string, size: number = 18) => {
     doc.setFontSize(size);
-    doc.setFont(FONTS.title, 'bold');
-    doc.setTextColor(26, 54, 93); // primary
+    doc.setFont(PDF_FONTS.title, 'bold');
+    doc.setTextColor(45, 45, 45);
     doc.text(text, margin, yPos);
     yPos += size * 0.5 + 4;
   };
 
   const addSubtitle = (text: string) => {
     doc.setFontSize(12);
-    doc.setFont(FONTS.title, 'bold');
-    doc.setTextColor(43, 108, 176); // secondary
+    doc.setFont(PDF_FONTS.title, 'bold');
+    doc.setTextColor(208, 74, 2);
     doc.text(text, margin, yPos);
     yPos += 8;
   };
 
   const addBody = (text: string) => {
     doc.setFontSize(10);
-    doc.setFont(FONTS.body, 'normal');
-    doc.setTextColor(26, 32, 44); // dark
+    doc.setFont(PDF_FONTS.body, 'normal');
+    doc.setTextColor(45, 45, 45);
     const lines = doc.splitTextToSize(text, contentWidth);
     doc.text(lines, margin, yPos);
     yPos += lines.length * 5 + 4;
@@ -541,23 +542,26 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
     }
   };
 
-  // Title Page
-  doc.setFillColor(26, 54, 93);
+  // Title Page — PwC dark with orange accent
+  doc.setFillColor(45, 45, 45);
   doc.rect(0, 0, pageWidth, 60, 'F');
+  doc.setFillColor(208, 74, 2);
+  doc.rect(0, 60, pageWidth, 2, 'F');
 
   doc.setFontSize(10);
-  doc.setFont(FONTS.title, 'normal');
-  doc.setTextColor(49, 130, 206);
-  doc.text('InsightSynth AI', margin, 20);
+  doc.setFont(PDF_FONTS.title, 'normal');
+  doc.setTextColor(208, 74, 2);
+  doc.text('pwc', margin, 20);
 
-  doc.setFontSize(24);
-  doc.setFont(FONTS.title, 'bold');
+  doc.setFontSize(22);
+  doc.setFont(PDF_FONTS.title, 'bold');
   doc.setTextColor(255, 255, 255);
   doc.text(`${data.industry} Performance Analysis`, margin, 38);
 
   doc.setFontSize(10);
-  doc.setTextColor(226, 232, 240);
-  doc.text(`Generated: ${data.metadata.generatedAt}`, margin, 50);
+  doc.setTextColor(200, 200, 200);
+  const dateStr = new Date(data.metadata.generatedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  doc.text(dateStr, margin, 50);
   doc.text(`Source: ${data.metadata.fileName} (${data.metadata.totalRows.toLocaleString()} records)`, margin, 56);
 
   yPos = 75;
@@ -574,11 +578,11 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
   for (const kpi of data.kpiValues) {
     checkPageBreak(12);
     doc.setFontSize(10);
-    doc.setFont(FONTS.body, 'bold');
-    doc.setTextColor(26, 32, 44);
+    doc.setFont(PDF_FONTS.body, 'bold');
+    doc.setTextColor(45, 45, 45);
     doc.text(`${kpi.name}:`, margin, yPos);
 
-    doc.setFont(FONTS.body, 'normal');
+    doc.setFont(PDF_FONTS.body, 'normal');
     const trendArrow = kpi.trend === 'up' ? '(+)' : kpi.trend === 'down' ? '(-)' : '(=)';
     doc.text(`${kpi.value.toFixed(1)} ${kpi.unit} ${trendArrow} ${kpi.trendValue.toFixed(1)}%`, margin + 55, yPos);
     yPos += 6;
@@ -595,7 +599,7 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
     const statusSymbol = benchmark.status === 'above' ? '[+]' : benchmark.status === 'below' ? '[-]' : '[=]';
 
     doc.setFontSize(9);
-    doc.setFont(FONTS.body, 'normal');
+    doc.setFont(PDF_FONTS.body, 'normal');
 
     if (benchmark.status === 'above') {
       doc.setTextColor(56, 161, 105);
@@ -624,21 +628,21 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
     const severityTag = `[${insight.severity.toUpperCase()}]`;
 
     doc.setFontSize(10);
-    doc.setFont(FONTS.body, 'bold');
+    doc.setFont(PDF_FONTS.body, 'bold');
 
     if (insight.severity === 'high') {
-      doc.setTextColor(229, 62, 62);
+      doc.setTextColor(208, 74, 2);
     } else if (insight.severity === 'medium') {
-      doc.setTextColor(214, 158, 46);
+      doc.setTextColor(235, 140, 0);
     } else {
-      doc.setTextColor(56, 161, 105);
+      doc.setTextColor(46, 125, 50);
     }
 
     doc.text(`${severityTag} ${insight.title}`, margin, yPos);
     yPos += 5;
 
-    doc.setFont(FONTS.body, 'normal');
-    doc.setTextColor(26, 32, 44);
+    doc.setFont(PDF_FONTS.body, 'normal');
+    doc.setTextColor(45, 45, 45);
     const descLines = doc.splitTextToSize(insight.description, contentWidth);
     doc.text(descLines.slice(0, 3), margin, yPos);
     yPos += Math.min(descLines.length, 3) * 4 + 6;
@@ -662,22 +666,25 @@ export async function exportToPDF(data: ExportData): Promise<Blob> {
   for (const step of data.storyline.nextSteps) {
     checkPageBreak(12);
     doc.setFontSize(10);
-    doc.setFont(FONTS.body, 'normal');
-    doc.setTextColor(26, 32, 44);
+    doc.setFont(PDF_FONTS.body, 'normal');
+    doc.setTextColor(45, 45, 45);
     const stepLines = doc.splitTextToSize(`- ${step}`, contentWidth - 5);
     doc.text(stepLines, margin + 3, yPos);
     yPos += stepLines.length * 5 + 2;
   }
 
-  // Footer on all pages
+  // Footer on all pages — PwC style
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
-    doc.setFont(FONTS.body, 'normal');
-    doc.setTextColor(113, 128, 150);
-    doc.text('Generated by InsightSynth AI | Confidential', pageWidth / 2, 290, { align: 'center' });
+    doc.setFont(PDF_FONTS.body, 'normal');
+    doc.setTextColor(125, 125, 125);
+    doc.text('PwC | Confidential', margin, 290);
     doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, 290, { align: 'right' });
+    // Orange bottom line
+    doc.setFillColor(208, 74, 2);
+    doc.rect(0, 293, pageWidth, 0.5, 'F');
   }
 
   return doc.output('blob');
