@@ -192,10 +192,30 @@ export function compareWithBenchmarks(
     'return_rate', 'staff_turnover', 'bed_occupancy_rate', 'energy_cost_per_unit',
   ];
 
+  const monetaryUnits = ['usd', '$', '$/fte', 'inr', '₹', 'eur', '€', 'gbp', '£'];
+  const pctUnits = ['%', 'percent'];
+
+  function isMonetary(u: string): boolean {
+    const lower = (u || '').toLowerCase().trim();
+    return monetaryUnits.some(m => lower.includes(m));
+  }
+
+  function isPct(u: string): boolean {
+    const lower = (u || '').toLowerCase().trim();
+    return pctUnits.includes(lower);
+  }
+
   for (const kpi of kpiValues) {
     const benchmark = findBenchmarkMatch(kpi.name, benchmarks);
     if (!benchmark) continue;
     if (benchmark.value === 0) continue;
+
+    // Skip incompatible unit matches (e.g. "Revenue" in USD matching "Revenue Growth" in %)
+    if (isMonetary(kpi.unit) && isPct(benchmark.unit)) continue;
+    if (isPct(kpi.unit) && isMonetary(benchmark.unit)) continue;
+
+    // Use the client's unit when it's monetary but benchmark says something generic
+    const unit = isMonetary(kpi.unit) ? kpi.unit : benchmark.unit;
 
     const gap = kpi.value - benchmark.value;
     const gapPercent = ((kpi.value - benchmark.value) / benchmark.value) * 100;
@@ -217,7 +237,7 @@ export function compareWithBenchmarks(
       gap: Math.round(gap * 100) / 100,
       gapPercent: Math.round(gapPercent * 100) / 100,
       status,
-      unit: benchmark.unit,
+      unit,
       source: benchmark.source,
       methodology: benchmark.methodology,
       confidence: benchmark.confidence,
