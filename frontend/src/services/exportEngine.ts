@@ -10,24 +10,32 @@ import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 
 /**
- * Export configuration and styling constants.
+ * PwC Brand Colors & Export Configuration
  */
 const COLORS = {
-  primary: '1a365d',
-  secondary: '2b6cb0',
-  accent: '3182ce',
-  success: '38a169',
-  warning: 'd69e2e',
-  danger: 'e53e3e',
-  dark: '1a202c',
-  light: 'f7fafc',
-  white: 'ffffff',
-  gray: '718096',
-  lightGray: 'e2e8f0'
+  pwcOrange: 'D04A02',
+  pwcTangerine: 'EB8C00',
+  pwcYellow: 'FFB600',
+  pwcRed: 'E0301E',
+  pwcRose: 'D93954',
+  dark: '2D2D2D',
+  charcoal: '1A1A1A',
+  white: 'FFFFFF',
+  light: 'F5F5F5',
+  gray: '7D7D7D',
+  lightGray: 'E8E8E8',
+  mediumGray: 'B0B0B0',
+  success: '2E7D32',
+  warning: 'E65100',
+  danger: 'C62828',
+  // Legacy aliases for PDF/Excel
+  primary: '2D2D2D',
+  secondary: 'D04A02',
+  accent: 'EB8C00',
 };
 
 const FONTS = {
-  title: 'Arial',
+  title: 'Georgia',
   body: 'Arial',
   mono: 'Courier New'
 };
@@ -53,386 +61,427 @@ export interface ExportData {
 // ============================================================================
 
 /**
- * Creates a consulting-style PowerPoint presentation with KPI data, benchmarks,
- * insights, and executive storyline.
+ * Creates a PwC-branded consulting PowerPoint presentation.
+ * Follows PwC visual identity: orange accent, Georgia headings, structured frameworks.
  */
 export async function exportToPowerPoint(data: ExportData): Promise<Blob> {
   const pptx = new PptxGenJS();
 
-  // Presentation settings
   pptx.layout = 'LAYOUT_16x9';
-  pptx.author = 'InsightSynth AI';
+  pptx.author = 'PwC | InsightSynth AI';
+  pptx.company = 'PwC';
   pptx.subject = `${data.industry} Performance Analysis`;
 
-  // Slide 1: Title
-  createTitleSlide(pptx, data);
+  // Define PwC master slide layouts
+  pptx.defineSlideMaster({
+    title: 'PWC_TITLE',
+    background: { color: COLORS.charcoal },
+    objects: [
+      { rect: { x: 0, y: 0, w: 0.08, h: '100%', fill: { color: COLORS.pwcOrange } } },
+      { text: { text: 'pwc', options: { x: 8.5, y: 4.8, w: 1.5, h: 0.5, fontSize: 24, fontFace: FONTS.title, color: COLORS.pwcOrange, bold: true } } },
+    ],
+  });
 
-  // Slide 2: Executive Summary
-  createExecutiveSummarySlide(pptx, data);
+  pptx.defineSlideMaster({
+    title: 'PWC_CONTENT',
+    background: { color: COLORS.white },
+    objects: [
+      { rect: { x: 0, y: 0, w: '100%', h: 0.06, fill: { color: COLORS.pwcOrange } } },
+      { rect: { x: 0, y: 5.2, w: '100%', h: 0.4, fill: { color: COLORS.light } } },
+      { text: { text: 'PwC | Confidential', options: { x: 0.4, y: 5.25, w: 4, h: 0.3, fontSize: 7, color: COLORS.gray, fontFace: FONTS.body } } },
+      { text: { text: 'pwc', options: { x: 9.0, y: 5.25, w: 0.8, h: 0.3, fontSize: 9, fontFace: FONTS.title, color: COLORS.pwcOrange, bold: true } } },
+    ],
+  });
 
-  // Slide 3: KPI Overview
-  createKPIOverviewSlide(pptx, data);
+  pptx.defineSlideMaster({
+    title: 'PWC_DIVIDER',
+    background: { color: COLORS.dark },
+    objects: [
+      { rect: { x: 0, y: 2.4, w: '100%', h: 0.04, fill: { color: COLORS.pwcOrange } } },
+      { text: { text: 'pwc', options: { x: 8.5, y: 4.8, w: 1.5, h: 0.5, fontSize: 24, fontFace: FONTS.title, color: COLORS.pwcOrange, bold: true } } },
+    ],
+  });
 
-  // Slide 4: Benchmark Comparison
-  createBenchmarkSlide(pptx, data);
+  createPwcTitleSlide(pptx, data);
+  createPwcAgendaSlide(pptx, data);
+  createPwcExecutiveSummarySlide(pptx, data);
+  createPwcKPIDashboardSlide(pptx, data);
+  createPwcBenchmarkSlide(pptx, data);
+  createPwcInsightsSlide(pptx, data);
+  createPwcRootCauseSlide(pptx, data);
+  createPwcRecommendationsSlide(pptx, data);
+  createPwcNextStepsSlide(pptx, data);
+  createPwcClosingSlide(pptx, data);
 
-  // Slide 5: Key Insights
-  createInsightsSlide(pptx, data);
-
-  // Slide 6: Root Cause Analysis
-  createRootCauseSlide(pptx, data);
-
-  // Slide 7: Recommendations
-  createRecommendationSlide(pptx, data);
-
-  // Slide 8: Next Steps
-  createNextStepsSlide(pptx, data);
-
-  // Generate the file
   const blob = await pptx.write({ outputType: 'blob' }) as Blob;
   return blob;
 }
 
-function createTitleSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
-  slide.background = { color: COLORS.primary };
+// ============================================================================
+// PwC-BRANDED SLIDE CREATION FUNCTIONS
+// ============================================================================
 
-  slide.addText('InsightSynth AI', {
-    x: 0.5,
-    y: 0.5,
-    w: 9,
-    h: 0.5,
-    fontSize: 14,
-    color: COLORS.accent,
-    fontFace: FONTS.title
+function createPwcTitleSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_TITLE' });
+
+  slide.addText(String(data.industry).toUpperCase(), {
+    x: 0.6, y: 1.2, w: 8, h: 0.4,
+    fontSize: 13, color: COLORS.pwcOrange, fontFace: FONTS.body, bold: true, letterSpacing: 3,
   });
 
-  slide.addText(`${data.industry} Performance Analysis`, {
-    x: 0.5,
-    y: 2.0,
-    w: 9,
-    h: 1.2,
-    fontSize: 36,
-    color: COLORS.white,
-    fontFace: FONTS.title,
-    bold: true
+  slide.addText('Performance Analysis\n& Benchmark Assessment', {
+    x: 0.6, y: 1.7, w: 8, h: 1.6,
+    fontSize: 32, color: COLORS.white, fontFace: FONTS.title, bold: true, lineSpacingMultiple: 1.2,
   });
 
-  slide.addText(`Generated: ${data.metadata.generatedAt}\nSource: ${data.metadata.fileName} (${data.metadata.totalRows.toLocaleString()} records)`, {
-    x: 0.5,
-    y: 4.0,
-    w: 9,
-    h: 0.8,
-    fontSize: 12,
-    color: COLORS.lightGray,
-    fontFace: FONTS.body
+  slide.addShape('rect' as any, { x: 0.6, y: 3.5, w: 2.0, h: 0.04, fill: { color: COLORS.pwcOrange } });
+
+  const dateStr = new Date(data.metadata.generatedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  slide.addText(`${dateStr}\n${data.metadata.fileName}\n${data.metadata.totalRows.toLocaleString()} records analyzed`, {
+    x: 0.6, y: 3.8, w: 6, h: 0.9,
+    fontSize: 11, color: COLORS.mediumGray, fontFace: FONTS.body, lineSpacingMultiple: 1.5,
   });
 }
 
-function createExecutiveSummarySlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcAgendaSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
+
+  slide.addText('Agenda', {
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
+  });
+
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
+
+  const items = [
+    'Executive Summary & Key Findings',
+    'KPI Performance Dashboard',
+    'Industry Benchmark Comparison',
+    'Critical Insights & Risk Areas',
+    'Root Cause Analysis',
+    'Strategic Recommendations',
+    'Roadmap & Next Steps',
+  ];
+
+  items.forEach((item, i) => {
+    const y = 1.3 + i * 0.52;
+    slide.addText(String(i + 1).padStart(2, '0'), {
+      x: 0.5, y, w: 0.6, h: 0.4,
+      fontSize: 16, color: COLORS.pwcOrange, fontFace: FONTS.title, bold: true,
+    });
+    slide.addText(item, {
+      x: 1.2, y, w: 7, h: 0.4,
+      fontSize: 13, color: COLORS.dark, fontFace: FONTS.body,
+    });
+  });
+}
+
+function createPwcExecutiveSummarySlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
   slide.addText('Executive Summary', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
   });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
 
   slide.addText(data.storyline.executiveSummary, {
-    x: 0.5,
-    y: 1.2,
-    w: 9,
-    h: 2.0,
-    fontSize: 13,
-    color: COLORS.dark,
-    fontFace: FONTS.body,
-    valign: 'top'
+    x: 0.5, y: 1.1, w: 9, h: 1.5,
+    fontSize: 11, color: COLORS.dark, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.4,
   });
 
-  // KPI summary cards
   const aboveBenchmark = data.benchmarks.filter(b => b.status === 'above').length;
   const belowBenchmark = data.benchmarks.filter(b => b.status === 'below').length;
   const highRisks = data.insights.filter(i => i.severity === 'high').length;
 
-  const summaryBoxes = [
-    { label: 'KPIs Analyzed', value: String(data.kpiValues.length), color: COLORS.primary },
-    { label: 'Above Benchmark', value: String(aboveBenchmark), color: COLORS.success },
-    { label: 'Below Benchmark', value: String(belowBenchmark), color: COLORS.warning },
-    { label: 'High-Risk Items', value: String(highRisks), color: COLORS.danger }
+  const metrics = [
+    { label: 'KPIs Analyzed', value: String(data.kpiValues.length), accent: COLORS.dark },
+    { label: 'Above Benchmark', value: String(aboveBenchmark), accent: COLORS.success },
+    { label: 'Below Benchmark', value: String(belowBenchmark), accent: COLORS.pwcOrange },
+    { label: 'High-Risk Areas', value: String(highRisks), accent: COLORS.pwcRed },
   ];
 
-  summaryBoxes.forEach((box, i) => {
-    const x = 0.5 + i * 2.4;
-    slide.addShape('rect' as unknown as PptxGenJS.ShapeType, {
-      x,
-      y: 3.8,
-      w: 2.1,
-      h: 1.4,
-      fill: { color: COLORS.light },
-      line: { color: box.color, width: 2 }
+  metrics.forEach((m, i) => {
+    const x = 0.5 + i * 2.35;
+    slide.addShape('rect' as any, { x, y: 2.9, w: 2.1, h: 1.5, fill: { color: COLORS.light } });
+    slide.addShape('rect' as any, { x, y: 2.9, w: 2.1, h: 0.05, fill: { color: m.accent } });
+    slide.addText(m.value, {
+      x, y: 3.1, w: 2.1, h: 0.75,
+      fontSize: 30, color: m.accent, fontFace: FONTS.title, bold: true, align: 'center',
     });
-    slide.addText(box.value, {
-      x,
-      y: 3.9,
-      w: 2.1,
-      h: 0.8,
-      fontSize: 28,
-      color: box.color,
-      fontFace: FONTS.title,
-      bold: true,
-      align: 'center'
+    slide.addText(m.label, {
+      x, y: 3.85, w: 2.1, h: 0.4,
+      fontSize: 9, color: COLORS.gray, fontFace: FONTS.body, align: 'center',
     });
-    slide.addText(box.label, {
-      x,
-      y: 4.7,
-      w: 2.1,
-      h: 0.4,
-      fontSize: 10,
-      color: COLORS.gray,
-      fontFace: FONTS.body,
-      align: 'center'
-    });
+  });
+
+  // Key takeaway box
+  slide.addShape('rect' as any, { x: 0.5, y: 4.6, w: 9, h: 0.5, fill: { color: 'FFF3E0' } });
+  slide.addShape('rect' as any, { x: 0.5, y: 4.6, w: 0.06, h: 0.5, fill: { color: COLORS.pwcOrange } });
+  slide.addText(`Key Takeaway: ${data.storyline.keyInsight}`, {
+    x: 0.7, y: 4.6, w: 8.7, h: 0.5,
+    fontSize: 9, color: COLORS.dark, fontFace: FONTS.body, italic: true, valign: 'middle',
   });
 }
 
-function createKPIOverviewSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcKPIDashboardSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
-  slide.addText('Key Performance Indicators', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+  slide.addText('KPI Performance Dashboard', {
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
   });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
 
-  // Create KPI table
   const tableData: PptxGenJS.TableRow[] = [
     [
-      { text: 'KPI', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Value', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Unit', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Category', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Trend', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } }
+      { text: 'KPI', options: { bold: true, fontSize: 9, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Value', options: { bold: true, fontSize: 9, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Unit', options: { bold: true, fontSize: 9, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Category', options: { bold: true, fontSize: 9, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Trend', options: { bold: true, fontSize: 9, color: COLORS.white, fill: { color: COLORS.dark } } },
     ]
   ];
 
-  for (const kpi of data.kpiValues.slice(0, 10)) {
-    const trendSymbol = kpi.trend === 'up' ? '^ Up' : kpi.trend === 'down' ? 'v Down' : '- Stable';
-    const trendColor = kpi.trend === 'up' ? COLORS.success : kpi.trend === 'down' ? COLORS.danger : COLORS.gray;
+  for (const kpi of data.kpiValues.slice(0, 12)) {
+    const trendIcon = kpi.trend === 'up' ? '▲' : kpi.trend === 'down' ? '▼' : '●';
+    const trendColor = kpi.trend === 'up' ? COLORS.success : kpi.trend === 'down' ? COLORS.pwcRed : COLORS.gray;
+    const rowFill = tableData.length % 2 === 0 ? COLORS.light : COLORS.white;
 
     tableData.push([
-      { text: kpi.name },
-      { text: kpi.value.toFixed(1) },
-      { text: kpi.unit },
-      { text: kpi.category },
-      { text: trendSymbol, options: { color: trendColor } }
+      { text: kpi.name, options: { fontSize: 9, fill: { color: rowFill } } },
+      { text: kpi.value.toLocaleString(undefined, { maximumFractionDigits: 1 }), options: { fontSize: 9, bold: true, fill: { color: rowFill } } },
+      { text: kpi.unit, options: { fontSize: 9, color: COLORS.gray, fill: { color: rowFill } } },
+      { text: kpi.category, options: { fontSize: 9, fill: { color: rowFill } } },
+      { text: `${trendIcon} ${kpi.trend}`, options: { fontSize: 9, color: trendColor, bold: true, fill: { color: rowFill } } },
     ]);
   }
 
   slide.addTable(tableData, {
-    x: 0.5,
-    y: 1.0,
-    w: 9.0,
-    fontSize: 10,
+    x: 0.5, y: 1.1, w: 9.0,
+    fontSize: 9, fontFace: FONTS.body,
     border: { type: 'solid', pt: 0.5, color: COLORS.lightGray },
-    colW: [2.5, 1.5, 1.0, 2.0, 2.0]
+    colW: [2.8, 1.5, 1.0, 2.0, 1.7],
   });
 }
 
-function createBenchmarkSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcBenchmarkSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
-  slide.addText('Benchmark Comparison', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+  slide.addText('Industry Benchmark Comparison', {
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
   });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
 
   const tableData: PptxGenJS.TableRow[] = [
     [
-      { text: 'KPI', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Client', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Benchmark', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Gap', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } },
-      { text: 'Source', options: { bold: true, color: COLORS.white, fill: { color: COLORS.primary } } }
+      { text: 'KPI', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Your Value', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Ind. Avg', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Top Quartile', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Gap', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
+      { text: 'Position', options: { bold: true, fontSize: 8, color: COLORS.white, fill: { color: COLORS.dark } } },
     ]
   ];
 
-  for (const benchmark of data.benchmarks.slice(0, 10)) {
-    const gapColor = benchmark.status === 'above' ? COLORS.success : benchmark.status === 'below' ? COLORS.danger : COLORS.gray;
-    const gapText = `${benchmark.gapPercent > 0 ? '+' : ''}${benchmark.gapPercent.toFixed(1)}%`;
+  for (const b of data.benchmarks.slice(0, 10)) {
+    const gap = b.gapPercent ?? 0;
+    const gapColor = gap > 0 ? COLORS.success : gap < 0 ? COLORS.pwcRed : COLORS.gray;
+    const gapText = `${gap > 0 ? '+' : ''}${gap.toFixed(1)}%`;
+    const posLabel = b.status === 'above' ? 'Above' : b.status === 'below' ? 'Below' : 'At Par';
+    const posColor = b.status === 'above' ? COLORS.success : b.status === 'below' ? COLORS.pwcOrange : COLORS.gray;
+    const rowFill = tableData.length % 2 === 0 ? COLORS.light : COLORS.white;
 
     tableData.push([
-      { text: benchmark.kpiName },
-      { text: `${benchmark.clientValue.toFixed(1)} ${benchmark.unit}` },
-      { text: `${benchmark.industryAverage.toFixed(1)} ${benchmark.unit}` },
-      { text: gapText, options: { color: gapColor, bold: true } },
-      { text: benchmark.source }
+      { text: b.kpiName, options: { fontSize: 8, fill: { color: rowFill } } },
+      { text: `${b.clientValue.toFixed(1)} ${b.unit}`, options: { fontSize: 8, bold: true, fill: { color: rowFill } } },
+      { text: `${b.industryAverage.toFixed(1)} ${b.unit}`, options: { fontSize: 8, color: COLORS.gray, fill: { color: rowFill } } },
+      { text: `${b.topQuartile.toFixed(1)} ${b.unit}`, options: { fontSize: 8, color: COLORS.success, fill: { color: rowFill } } },
+      { text: gapText, options: { fontSize: 8, bold: true, color: gapColor, fill: { color: rowFill } } },
+      { text: posLabel, options: { fontSize: 8, bold: true, color: posColor, fill: { color: rowFill } } },
     ]);
   }
 
   slide.addTable(tableData, {
-    x: 0.5,
-    y: 1.0,
-    w: 9.0,
-    fontSize: 9,
+    x: 0.5, y: 1.1, w: 9.0,
+    fontSize: 8, fontFace: FONTS.body,
     border: { type: 'solid', pt: 0.5, color: COLORS.lightGray },
-    colW: [2.2, 1.5, 1.5, 1.3, 2.5]
+    colW: [2.2, 1.5, 1.4, 1.4, 1.2, 1.3],
   });
 }
 
-function createInsightsSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcInsightsSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
-  slide.addText('Key Insights', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+  slide.addText('Critical Insights', {
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
   });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
 
-  const topInsights = data.insights.slice(0, 5);
-  let yPos = 1.1;
+  const topInsights = data.insights.slice(0, 4);
+  topInsights.forEach((insight, i) => {
+    const y = 1.15 + i * 1.0;
+    const severityColor = insight.severity === 'high' ? COLORS.pwcRed : insight.severity === 'medium' ? COLORS.pwcTangerine : COLORS.success;
+    const severityLabel = (insight.severity || 'low').toUpperCase();
 
-  for (const insight of topInsights) {
-    const severityColor = insight.severity === 'high' ? COLORS.danger : insight.severity === 'medium' ? COLORS.warning : COLORS.success;
-    const typeLabel = insight.type.charAt(0).toUpperCase() + insight.type.slice(1);
+    // Left accent bar
+    slide.addShape('rect' as any, { x: 0.5, y, w: 0.06, h: 0.85, fill: { color: severityColor } });
 
-    slide.addText(`[${typeLabel.toUpperCase()}] ${insight.title}`, {
-      x: 0.5,
-      y: yPos,
-      w: 9,
-      h: 0.35,
-      fontSize: 11,
-      color: severityColor,
-      fontFace: FONTS.title,
-      bold: true
+    // Severity badge
+    slide.addText(severityLabel, {
+      x: 0.7, y, w: 0.7, h: 0.3,
+      fontSize: 7, color: severityColor, fontFace: FONTS.body, bold: true,
     });
 
-    slide.addText(insight.description.substring(0, 200) + (insight.description.length > 200 ? '...' : ''), {
-      x: 0.5,
-      y: yPos + 0.35,
-      w: 9,
-      h: 0.55,
-      fontSize: 9,
-      color: COLORS.dark,
-      fontFace: FONTS.body,
-      valign: 'top'
+    // Title
+    slide.addText(insight.title, {
+      x: 1.5, y, w: 7.8, h: 0.3,
+      fontSize: 11, color: COLORS.dark, fontFace: FONTS.body, bold: true,
     });
 
-    yPos += 1.0;
-  }
+    // Description
+    slide.addText(insight.description.substring(0, 180) + (insight.description.length > 180 ? '...' : ''), {
+      x: 1.5, y: y + 0.32, w: 7.8, h: 0.5,
+      fontSize: 9, color: COLORS.gray, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.3,
+    });
+  });
 }
 
-function createRootCauseSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcRootCauseSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
   slide.addText('Root Cause Analysis', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
+  });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
+
+  // Situation
+  slide.addText('Situation', {
+    x: 0.5, y: 1.15, w: 2, h: 0.35,
+    fontSize: 10, color: COLORS.pwcOrange, fontFace: FONTS.body, bold: true,
+  });
+  slide.addText(data.storyline.currentPerformance.substring(0, 300), {
+    x: 0.5, y: 1.5, w: 9, h: 0.8,
+    fontSize: 10, color: COLORS.dark, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.3,
   });
 
-  slide.addText(data.storyline.rootCause.substring(0, 800), {
-    x: 0.5,
-    y: 1.0,
-    w: 9,
-    h: 4.0,
-    fontSize: 11,
-    color: COLORS.dark,
-    fontFace: FONTS.body,
-    valign: 'top'
+  // Complication
+  slide.addText('Complication', {
+    x: 0.5, y: 2.5, w: 2, h: 0.35,
+    fontSize: 10, color: COLORS.pwcOrange, fontFace: FONTS.body, bold: true,
+  });
+  slide.addText(data.storyline.rootCause.substring(0, 400), {
+    x: 0.5, y: 2.85, w: 9, h: 1.2,
+    fontSize: 10, color: COLORS.dark, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.3,
+  });
+
+  // Impact
+  slide.addText('Business Impact', {
+    x: 0.5, y: 4.2, w: 2, h: 0.35,
+    fontSize: 10, color: COLORS.pwcOrange, fontFace: FONTS.body, bold: true,
+  });
+  slide.addText(data.storyline.businessImpact.substring(0, 300), {
+    x: 0.5, y: 4.55, w: 9, h: 0.6,
+    fontSize: 10, color: COLORS.dark, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.3,
   });
 }
 
-function createRecommendationSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcRecommendationsSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
   slide.addText('Strategic Recommendations', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
+  });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
+
+  slide.addText(data.storyline.recommendation, {
+    x: 0.5, y: 1.15, w: 9, h: 2.5,
+    fontSize: 11, color: COLORS.dark, fontFace: FONTS.body, valign: 'top', lineSpacingMultiple: 1.4,
   });
 
-  slide.addText(data.storyline.recommendation.substring(0, 900), {
-    x: 0.5,
-    y: 1.0,
-    w: 9,
-    h: 4.2,
-    fontSize: 11,
-    color: COLORS.dark,
-    fontFace: FONTS.body,
-    valign: 'top'
+  // Priority framework box
+  slide.addShape('rect' as any, { x: 0.5, y: 3.9, w: 9, h: 1.2, fill: { color: COLORS.light } });
+  slide.addShape('rect' as any, { x: 0.5, y: 3.9, w: 9, h: 0.04, fill: { color: COLORS.pwcOrange } });
+
+  slide.addText('Implementation Priority', {
+    x: 0.7, y: 4.0, w: 4, h: 0.35,
+    fontSize: 10, color: COLORS.pwcOrange, fontFace: FONTS.body, bold: true,
+  });
+
+  const priorities = ['Quick Wins (0-3 months)', 'Medium-term (3-6 months)', 'Strategic (6-12 months)'];
+  priorities.forEach((p, i) => {
+    const x = 0.7 + i * 3.0;
+    slide.addText(`${i + 1}`, {
+      x, y: 4.35, w: 0.35, h: 0.35,
+      fontSize: 14, color: COLORS.pwcOrange, fontFace: FONTS.title, bold: true,
+    });
+    slide.addText(p, {
+      x: x + 0.4, y: 4.35, w: 2.5, h: 0.35,
+      fontSize: 9, color: COLORS.dark, fontFace: FONTS.body, valign: 'middle',
+    });
   });
 }
 
-function createNextStepsSlide(pptx: PptxGenJS, data: ExportData): void {
-  const slide = pptx.addSlide();
+function createPwcNextStepsSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_CONTENT' });
 
-  slide.addText('Next Steps', {
-    x: 0.5,
-    y: 0.3,
-    w: 9,
-    h: 0.6,
-    fontSize: 24,
-    color: COLORS.primary,
-    fontFace: FONTS.title,
-    bold: true
+  slide.addText('Roadmap & Next Steps', {
+    x: 0.5, y: 0.3, w: 9, h: 0.6,
+    fontSize: 22, color: COLORS.dark, fontFace: FONTS.title, bold: true,
+  });
+  slide.addShape('rect' as any, { x: 0.5, y: 0.85, w: 1.2, h: 0.035, fill: { color: COLORS.pwcOrange } });
+
+  const steps = data.storyline.nextSteps.slice(0, 6);
+  steps.forEach((step, i) => {
+    const y = 1.2 + i * 0.65;
+
+    // Step number circle
+    slide.addShape('ellipse' as any, {
+      x: 0.5, y: y + 0.05, w: 0.4, h: 0.4, fill: { color: COLORS.pwcOrange },
+    });
+    slide.addText(String(i + 1), {
+      x: 0.5, y: y + 0.05, w: 0.4, h: 0.4,
+      fontSize: 12, color: COLORS.white, fontFace: FONTS.title, bold: true, align: 'center', valign: 'middle',
+    });
+
+    // Connector line
+    if (i < steps.length - 1) {
+      slide.addShape('rect' as any, { x: 0.68, y: y + 0.45, w: 0.03, h: 0.25, fill: { color: COLORS.lightGray } });
+    }
+
+    // Step text
+    slide.addText(step, {
+      x: 1.1, y, w: 8.2, h: 0.5,
+      fontSize: 11, color: COLORS.dark, fontFace: FONTS.body, valign: 'middle',
+    });
+  });
+}
+
+function createPwcClosingSlide(pptx: PptxGenJS, data: ExportData): void {
+  const slide = pptx.addSlide({ masterName: 'PWC_DIVIDER' });
+
+  slide.addText('Thank you', {
+    x: 0.6, y: 1.2, w: 8, h: 0.8,
+    fontSize: 36, color: COLORS.white, fontFace: FONTS.title, bold: true,
   });
 
-  const stepsText = data.storyline.nextSteps
-    .map((step, i) => `${i + 1}. ${step}`)
-    .join('\n\n');
-
-  slide.addText(stepsText, {
-    x: 0.5,
-    y: 1.0,
-    w: 9,
-    h: 4.2,
-    fontSize: 12,
-    color: COLORS.dark,
-    fontFace: FONTS.body,
-    valign: 'top'
+  slide.addText('This document has been prepared for general guidance on matters of interest only, and does not constitute professional advice.', {
+    x: 0.6, y: 2.8, w: 7, h: 0.8,
+    fontSize: 9, color: COLORS.mediumGray, fontFace: FONTS.body, lineSpacingMultiple: 1.4,
   });
 
-  // Footer
-  slide.addText('Generated by InsightSynth AI | Confidential', {
-    x: 0.5,
-    y: 5.2,
-    w: 9,
-    h: 0.3,
-    fontSize: 8,
-    color: COLORS.gray,
-    fontFace: FONTS.body,
-    align: 'center'
+  slide.addText(`Report generated: ${new Date(data.metadata.generatedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`, {
+    x: 0.6, y: 3.8, w: 6, h: 0.4,
+    fontSize: 10, color: COLORS.gray, fontFace: FONTS.body,
+  });
+
+  slide.addText('© 2024 PricewaterhouseCoopers. All rights reserved.', {
+    x: 0.6, y: 4.3, w: 6, h: 0.4,
+    fontSize: 8, color: COLORS.gray, fontFace: FONTS.body,
   });
 }
 
