@@ -1,21 +1,47 @@
-﻿import { type ClassValue, clsx } from 'clsx'
+import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function formatValue(value: number | null | undefined, unit?: string): string {
   if (value === null || value === undefined) return '—'
-  const u = (unit || '').toLowerCase()
-  if (u.includes('usd') || u.includes('$') || u.includes('revenue') || u.includes('cost')) {
+  const u = (unit || '').toLowerCase().trim()
+
+  if (u.includes('usd') || u === '$' || u.includes('$/fte')) {
     if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
     if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`
     return `$${value.toFixed(0)}`
   }
-  if (u.includes('%') || u.includes('percent') || u.includes('rate')) {
+  if (u === '%' || u === 'percent') {
     return `${value.toFixed(1)}%`
   }
+  if (u === 'x') {
+    return `${value.toFixed(1)}x`
+  }
+  if (u === 'days' || u === 'day') {
+    return `${value.toFixed(1)} days`
+  }
+  if (u === 'min' || u === 'minutes') {
+    return `${value.toFixed(0)} min`
+  }
+  if (u === 'hrs' || u === 'hours') {
+    return `${value.toFixed(1)} hrs`
+  }
+  if (u === 'score') {
+    return `${value.toFixed(0)} pts`
+  }
+  if (u === 'units' || u === 'count') {
+    if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+    if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+    return `${value.toFixed(0)}`
+  }
+
   if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
   if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}K`
   return value.toFixed(value % 1 === 0 ? 0 : 1)

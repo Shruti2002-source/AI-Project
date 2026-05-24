@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Minus, AlertCircle, Target, ArrowUpRight, Arr
 import Link from 'next/link';
 import { BenchmarkChart } from '@/components/dashboard/BenchmarkChart';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatValue } from '@/lib/utils';
 import { fetchBenchmarks, getStoredSession, type LiveBenchmarkData } from '@/lib/analytics-api';
 import type { BenchmarkComparison } from '@/types';
 
@@ -201,9 +201,9 @@ export default function BenchmarksPage() {
                               <div className="text-xs text-slate-500 mt-0.5 max-w-xs truncate">{b.recommendation.slice(0, 60)}...</div>
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-right font-semibold text-white">{b.clientValue}{b.unit}</td>
-                          <td className="px-4 py-3.5 text-right text-slate-400">{b.industryAverage}{b.unit}</td>
-                          <td className="px-4 py-3.5 text-right text-emerald-400">{b.topQuartile}{b.unit}</td>
+                          <td className="px-4 py-3.5 text-right font-semibold text-white">{formatValue(b.clientValue, b.unit)}</td>
+                          <td className="px-4 py-3.5 text-right text-slate-400">{formatValue(b.industryAverage, b.unit)}</td>
+                          <td className="px-4 py-3.5 text-right text-emerald-400">{formatValue(b.topQuartile, b.unit)}</td>
                           <td className={cn('px-4 py-3.5 text-right font-medium', isPositive ? 'text-emerald-400' : 'text-red-400')}>
                             <div className="flex items-center justify-end gap-1">
                               {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}

@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Legend } from 'recharts';
 import { BenchmarkComparison } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatValue } from '@/lib/utils';
 
 interface BenchmarkChartProps {
   data: BenchmarkComparison[];
@@ -13,6 +13,7 @@ interface BenchmarkChartProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const unit = payload[0]?.payload?.unit;
     return (
       <div className="glass-card rounded-xl p-3 text-xs max-w-xs border border-slate-700/50">
         <p className="text-white font-semibold mb-2">{label}</p>
@@ -20,7 +21,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           <div key={i} className="flex items-center gap-2 mb-1.5">
             <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: p.fill }} />
             <span className="text-slate-400 capitalize">{p.name}:</span>
-            <span className="text-white font-medium">{p.value}</span>
+            <span className="text-white font-medium">{formatValue(p.value, unit)}</span>
           </div>
         ))}
       </div>
@@ -44,7 +45,8 @@ export function BenchmarkChart({ data, title = 'KPI Benchmark Comparison' }: Ben
     client: d.clientValue,
     average: d.industryAverage,
     topQ: d.topQuartile,
-    position: d.position,
+    position: d.position ?? 'average',
+    unit: d.unit,
   }));
 
   return (
@@ -102,15 +104,16 @@ export function BenchmarkChart({ data, title = 'KPI Benchmark Comparison' }: Ben
 
       {/* Position legend */}
       <div className="mt-4 pt-4 border-t border-slate-800/60 grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {data.slice(0, 6).map((item) => {
-          const color = POSITION_COLORS[item.position] || '#6366f1';
-          const isPositive = item.variancePercent >= 0;
+        {data.slice(0, 6).map((item, idx) => {
+          const color = POSITION_COLORS[item.position ?? ''] || '#6366f1';
+          const vp = item.variancePercent ?? item.gapPercent ?? 0;
+          const isPositive = vp >= 0;
           return (
-            <div key={item.kpiId} className="flex items-center gap-2 text-xs">
+            <div key={item.kpiId ?? idx} className="flex items-center gap-2 text-xs">
               <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
               <span className="text-slate-500 truncate">{item.kpiName.split(' ').slice(0, 2).join(' ')}</span>
               <span className={cn('font-medium flex-shrink-0', isPositive ? 'text-emerald-400' : 'text-red-400')}>
-                {isPositive ? '+' : ''}{item.variancePercent.toFixed(1)}%
+                {isPositive ? '+' : ''}{vp.toFixed(1)}%
               </span>
             </div>
           );

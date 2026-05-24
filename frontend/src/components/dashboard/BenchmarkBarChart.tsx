@@ -1,7 +1,8 @@
-﻿'use client'
+'use client'
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts'
 import { BenchmarkComparison } from '@/types'
+import { formatValue } from '@/lib/utils'
 
 interface Props {
   comparisons: BenchmarkComparison[]
@@ -33,7 +34,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <div key={p.name} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: p.fill }} />
           <span className="text-slate-400">{p.name === 'client' ? 'Your Value' : 'Benchmark'}:</span>
-          <span className="text-slate-200 font-medium">{p.value?.toFixed(1)} {entry?.unit}</span>
+          <span className="text-slate-200 font-medium">{formatValue(p.value, entry?.unit)}</span>
         </div>
       ))}
     </div>
