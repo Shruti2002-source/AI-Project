@@ -187,21 +187,79 @@ export default function UploadEngine() {
     const dimensions = store.classifiedColumns.filter(c => c.role === 'dimension').map(c => c.name);
     const dateColumns = store.classifiedColumns.filter(c => c.role === 'date').map(c => c.name);
 
+    // Detect sheets in data
+    const sheets = [...new Set(parsedData.map(r => r._sheet as string).filter(Boolean))];
+    const isMultiSheet = sheets.length > 1;
+
+    // Add _sheet as dimension if multi-sheet
+    const finalDimensions = isMultiSheet && !dimensions.includes('_sheet')
+      ? ['_sheet', ...dimensions]
+      : dimensions;
+
     store.setSelectedKPIs(prioritizedKPIs);
-    store.setSelectedDimensions(dimensions);
+    store.setSelectedDimensions(finalDimensions);
     store.setSelectedDateColumns(dateColumns);
 
-    // Step 1: Calculate KPIs
+    // Step 1: Calculate KPIs (overall across all data)
     setAnalysisStep('Calculating KPIs...');
     store.setCurrentStep('calculating');
-    await new Promise(r => setTimeout(r, 300));
-    const kpiResults = calculateAllKPIs(parsedData, prioritizedKPIs, dimensions, dateColumns);
+    await new Promise(r => setTimeout(r, 200));
+    const kpiResults = calculateAllKPIs(parsedData, prioritizedKPIs, finalDimensions, dateColumns);
+
+    // Step 1b: If multi-sheet, also calculate per-sheet KPIs and add as grouped results
+    if (isMultiSheet) {
+      setAnalysisStep(`Analyzing ${sheets.length} sheets individually...`);
+      await new Promise(r => setTimeout(r, 200));
+
+      for (const sheet of sheets) {
+        const sheetData = parsedData.filter(r => r._sheet === sheet);
+        const sheetKPIs = calculateAllKPIs(sheetData, prioritizedKPIs, dimensions.filter(d => d !== '_sheet'), dateColumns);
+        // Add sheet-level overall results as grouped-by-sheet entries
+        for (const result of sheetKPIs.filter(r => r.groupedBy === 'Overall')) {
+          kpiResults.push({
+            ...result,
+            groupedBy: '_sheet',
+            groups: [{ label: sheet, value: result.overallValue }],
+          });
+        }
+      }
+
+      // Build consolidated _sheet breakdown for each KPI
+      const kpiNames = [...new Set(prioritizedKPIs.map(k => k.columnName))];
+      for (const kpiName of kpiNames) {
+        const sheetGroups = sheets.map(sheet => {
+          const sheetData = parsedData.filter(r => r._sheet === sheet);
+          const config = prioritizedKPIs.find(k => k.columnName === kpiName);
+          if (!config) return { label: sheet, value: 0 };
+          const values = sheetData.map(r => Number(r[kpiName])).filter(v => !isNaN(v));
+          if (values.length === 0) return { label: sheet, value: 0 };
+          const agg = config.aggregation;
+          let val = 0;
+          if (agg === 'sum' || agg === 'count') val = values.reduce((a, b) => a + b, 0);
+          else if (agg === 'average') val = values.reduce((a, b) => a + b, 0) / values.length;
+          else if (agg === 'min') val = Math.min(...values);
+          else if (agg === 'max') val = Math.max(...values);
+          else val = values.reduce((a, b) => a + b, 0);
+          return { label: sheet, value: val };
+        });
+
+        kpiResults.push({
+          kpiName: kpiName,
+          aggregation: prioritizedKPIs.find(k => k.columnName === kpiName)?.aggregation || 'sum',
+          unit: prioritizedKPIs.find(k => k.columnName === kpiName)?.unit || '',
+          overallValue: sheetGroups.reduce((a, g) => a + g.value, 0) / (prioritizedKPIs.find(k => k.columnName === kpiName)?.aggregation === 'average' ? sheetGroups.length : 1),
+          groupedBy: '_sheet',
+          groups: sheetGroups,
+        });
+      }
+    }
+
     store.setKpiResults(kpiResults);
 
     // Step 2: Benchmark comparison
     setAnalysisStep('Comparing with benchmarks...');
     store.setCurrentStep('benchmarking');
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
     const kpiValues = kpiResults
       .filter(r => r.groupedBy === 'Overall')
       .map(r => ({
@@ -216,17 +274,52 @@ export default function UploadEngine() {
     const benchmarks = compareWithBenchmarks(kpiValues, store.selectedIndustry as any ?? 'FMCG');
     store.setBenchmarks(benchmarks);
 
-    // Step 3: Generate insights
+    // Step 3: Generate insights (overall + per-sheet)
     setAnalysisStep('Generating insights...');
     store.setCurrentStep('generating-insights');
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
     const insights = generateGenericInsights(kpiResults, benchmarks, store.selectedIndustry || 'General');
+
+    // Step 3b: Generate per-sheet insights for multi-sheet files
+    if (isMultiSheet) {
+      setAnalysisStep('Generating sheet-wise insights...');
+      await new Promise(r => setTimeout(r, 200));
+
+      for (const sheet of sheets) {
+        const sheetData = parsedData.filter(r => r._sheet === sheet);
+        const sheetKPIs = calculateAllKPIs(sheetData, prioritizedKPIs, dimensions.filter(d => d !== '_sheet'), dateColumns);
+        const sheetKPIValues = sheetKPIs
+          .filter(r => r.groupedBy === 'Overall')
+          .map(r => ({
+            name: r.kpiName,
+            value: r.overallValue,
+            unit: r.unit,
+            category: 'General',
+            trend: r.trend ?? 'stable' as const,
+            trendValue: r.trendValue ?? 0,
+            formula: r.aggregation,
+          }));
+        const sheetBenchmarks = compareWithBenchmarks(sheetKPIValues, store.selectedIndustry as any ?? 'FMCG');
+        const sheetInsights = generateGenericInsights(sheetKPIs, sheetBenchmarks, store.selectedIndustry || 'General');
+
+        // Tag each insight with its source sheet and prefix title
+        for (const insight of sheetInsights.slice(0, 5)) {
+          insights.push({
+            ...insight,
+            id: `${insight.id}-${sheet}`,
+            title: `[${sheet}] ${insight.title}`,
+            description: `(Sheet: ${sheet}) ${insight.description}`,
+          });
+        }
+      }
+    }
+
     store.setInsights(insights);
 
     // Step 4: Generate storyline
     setAnalysisStep('Building executive storyline...');
     store.setCurrentStep('generating-storyline');
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
     const storyline = generateGenericStoryline(kpiResults, benchmarks, insights, store.selectedIndustry || 'General');
     store.setStoryline(storyline);
 
