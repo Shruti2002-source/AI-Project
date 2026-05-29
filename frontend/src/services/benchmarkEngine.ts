@@ -212,12 +212,15 @@ export function compareWithBenchmarks(
     if (!benchmark) continue;
     if (benchmark.value === 0) continue;
 
-    // Skip incompatible unit matches (e.g. "Revenue" in USD matching "Revenue Growth" in %)
-    if (isMonetary(kpi.unit) && isPct(benchmark.unit)) continue;
-    if (isPct(kpi.unit) && isMonetary(benchmark.unit)) continue;
+    // Only skip when there's a clear value-based mismatch:
+    // Large absolute values (>1000) matched against a percentage benchmark
+    const valueIsLargeMonetary = isMonetary(kpi.unit) && Math.abs(kpi.value) > 1000;
+    const benchmarkIsPct = isPct(benchmark.unit);
+    if (valueIsLargeMonetary && benchmarkIsPct) continue;
+    if (isPct(kpi.unit) && isMonetary(benchmark.unit) && benchmark.value > 1000) continue;
 
-    // Use the client's unit when it's monetary but benchmark says something generic
-    const unit = isMonetary(kpi.unit) ? kpi.unit : benchmark.unit;
+    // Use benchmark unit (more reliable since it comes from curated library)
+    const unit = benchmark.unit;
 
     const gap = kpi.value - benchmark.value;
     const gapPercent = ((kpi.value - benchmark.value) / benchmark.value) * 100;

@@ -57,6 +57,7 @@ const COUNT_PATTERNS = [
 // Patterns for detecting unit from column name
 const PERCENT_PATTERNS = [
   'rate', 'ratio', 'margin', 'percentage', 'percent', 'pct',
+  'growth', 'growth_rate', 'yoy', 'qoq', 'mom', 'cagr',
   'share', 'penetration', 'coverage', 'adoption', 'conversion',
   'retention', 'churn', 'attrition', 'efficiency', 'utilization',
   'occupancy', 'yield', 'accuracy', 'fill', 'availability',
@@ -128,8 +129,9 @@ function detectUnit(col: DatasetColumn): KPIUnit | string {
   if (normalized.includes('usd') || normalized.includes('dollar')) return 'USD';
   if (normalized.includes('inr') || normalized.includes('rupee')) return 'INR';
 
-  // Check if it's likely a monetary value from data range
-  if (matchesAny(normalized, CURRENCY_PATTERNS)) {
+  // Only classify as currency if it matches currency patterns AND doesn't also match percent patterns
+  // e.g. "revenue_growth" contains "revenue" (currency) AND "growth" (percent) → percent wins
+  if (matchesAny(normalized, CURRENCY_PATTERNS) && !matchesAny(normalized, PERCENT_PATTERNS)) {
     return 'USD';
   }
 

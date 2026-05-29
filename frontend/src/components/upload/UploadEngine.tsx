@@ -171,6 +171,23 @@ export default function UploadEngine() {
     setWizardStep('classify');
   };
 
+  const formatDisplayName = (rawName: string): string => {
+    // Common abbreviations to preserve in uppercase
+    const ABBREVIATIONS = ['kpi', 'roi', 'roa', 'roe', 'oee', 'aov', 'arpu', 'ltv', 'cac', 'cpa', 'nim', 'npa', 'npl', 'gmv', 'roas', 'ctr', 'nps', 'ebitda', 'ebit', 'cogs', 'sku', 'fmcg', 'yoy', 'qoq', 'mom'];
+
+    return rawName
+      .replace(/[_\-\.]+/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase → separate words
+      .toLowerCase()
+      .split(' ')
+      .filter(w => w.length > 0)
+      .map(word => {
+        if (ABBREVIATIONS.includes(word)) return word.toUpperCase();
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  };
+
   const handleRunAnalysis = async () => {
     setWizardStep('analyzing');
     store.setIsAnalyzing(true);
@@ -179,7 +196,7 @@ export default function UploadEngine() {
       .filter(c => c.role === 'kpi' && c.isPrioritized)
       .map(c => ({
         columnName: c.name,
-        displayName: c.name,
+        displayName: formatDisplayName(c.name),
         aggregation: c.aggregation || 'sum',
         unit: c.unit || '',
       } as KPIConfig));
